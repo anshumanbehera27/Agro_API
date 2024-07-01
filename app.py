@@ -41,17 +41,27 @@ def predictcrop():
         ph = float(data['pH'])
         rainfall = float(data['Rainfall'])
 
+
+        if(N > 50 and N > 60):
+            crop = "Rice"
+        elif(N > 50 and N < 80):
+            crop = "Wheat"
+        elif(N > 90):
+            crop = "cofee"
+        else:
         # Perform prediction
-        features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
-        prediction = Model_crop.predict(features)
-        crop = prediction[0]
+            features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
+            prediction = Model_crop.predict(features)
+            crop = prediction[0]
+
+        
 
         # Format the result message
         result = "{} is the best crop to be cultivated there.".format(crop)
 
         # Store the result in session
         session['result'] = result
-
+        
         # Return the prediction as JSON response
         return jsonify({"crop_prediction": result})
     except KeyError as e:
@@ -118,6 +128,14 @@ def predictfertilizer():
         return jsonify({"error": f"Missing form field - {e}"}), 400
     except ValueError as e:
         return jsonify({"error": f"Invalid form data - {e}"})
+    
+def test_model():
+    test_features = np.array([[90, 42, 43, 20.8, 82.0, 6.5, 202.9]])
+    prediction = Model_crop.predict(test_features)
+    print(f"Test prediction: {prediction}")
+
+test_model()  # Call this function to test model prediction during debugging
+
 
 
 if __name__ == '__main__':
