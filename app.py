@@ -28,29 +28,32 @@ def index():
 @app.route('/predictcrop', methods=['POST'])
 def predictcrop():
     try:
-        if request.method == 'POST':
-            # Get form data
-            N = float(request.form['Nitrogen'])
-            P = float(request.form['Phosporus'])
-            K = float(request.form['Potassium'])
-            temp = float(request.form['Temperature'])
-            humidity = float(request.form['Humidity'])
-            ph = float(request.form['Ph'])
-            rainfall = float(request.form['Rainfall'])
+        data = request.get_json()  # Parse JSON data from the request
+        if data is None:
+            raise ValueError("No JSON data received")
 
-            # Perform prediction
-            features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
-            prediction = Model_crop.predict(features)
-            crop = prediction[0]
+        # Get form data
+        N = float(data['Nitrogen'])
+        P = float(data['Phosphorus'])
+        K = float(data['Potassium'])
+        temp = float(data['Temperature'])
+        humidity = float(data['Humidity'])
+        ph = float(data['pH'])
+        rainfall = float(data['Rainfall'])
 
-            # Format the result message
-            result = "{} is the best crop to be cultivated there.".format(crop)
+        # Perform prediction
+        features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
+        prediction = Model_crop.predict(features)
+        crop = prediction[0]
 
-            # Store the result in session
-            session['result'] = result
+        # Format the result message
+        result = "{} is the best crop to be cultivated there.".format(crop)
 
-            # Return the prediction as JSON response
-            return jsonify({"crop_prediction": result})
+        # Store the result in session
+        session['result'] = result
+
+        # Return the prediction as JSON response
+        return jsonify({"crop_prediction": result})
     except KeyError as e:
         error_message = f"Error: Missing or incorrect form field - {str(e)}"
         return jsonify({"error": error_message}), 400
@@ -60,7 +63,7 @@ def predictcrop():
     except Exception as e:
         error_message = f"Error: {str(e)}"
         return jsonify({"error": error_message}), 500
-    
+
 
 ## Encode the values 
 # Define encoding functions outside the route function
