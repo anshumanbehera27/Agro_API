@@ -98,6 +98,7 @@ Method: POST
 ```
 
 ### Directory Structure
+```
 <Agro-api>/
 │
 ├── app.py             # Main application file
@@ -108,7 +109,7 @@ Method: POST
 ├── requirements.txt   # List of dependencies
 └── README.md          # This file
 
-
+```
 ### Dependencies
 - falsk 
 - numpy 
