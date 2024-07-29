@@ -21,6 +21,8 @@ Predict the best crop to cultivate based on various soil and environmental param
 **URL:** `https://agro-api-xnfo.onrender.com/predictcrop`
 
 **Method:** `POST`
+## API Testing 
+![Image Alt Text](Images\CropPredictionApi .png)
 
 **Request Body:**
 
@@ -61,6 +63,8 @@ Predict the best fertilizer to use based on various soil and crop parameters.
 URL: /predictfertilizer
 
 Method: POST
+## API Testing 
+![Image Alt Text](Images\Fertilzation Api .png)
 ```
 **Request Body:**
 ```json
