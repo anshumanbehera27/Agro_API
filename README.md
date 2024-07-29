@@ -22,7 +22,7 @@ Predict the best crop to cultivate based on various soil and environmental param
 
 **Method:** `POST`
 ## API Testing 
-![Image Alt Text](Images\CropPredictionApi .png)
+![Image Alt Text](Images/CropPredictionApi .png)
 
 **Request Body:**
 
@@ -64,7 +64,7 @@ URL: /predictfertilizer
 
 Method: POST
 ## API Testing 
-![Image Alt Text](Images\Fertilzation Api .png)
+![Image Alt Text](Images/Fertilzation Api .png)
 ```
 **Request Body:**
 ```json
