@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, session
+from flask import Flask, jsonify, request, session
 import pickle 
 import numpy as np 
 from sklearn.preprocessing import LabelEncoder
@@ -7,7 +7,10 @@ import secrets
 
 app = Flask(__name__)
 
-app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(16))
+if 'SECRET_KEY' in os.environ:
+    app.secret_key = os.environ['SECRET_KEY']
+else:
+    app.secret_key = secrets.token_hex(16)
 
 # Define the path to the models directory
 models_dir = os.path.join(app.root_path, 'Models')
@@ -15,68 +18,13 @@ models_dir = os.path.join(app.root_path, 'Models')
 # Load machine learning models
 Model_crop_path = os.path.join(models_dir, 'NBClassifier.pkl')
 Model_fertilizer_path = os.path.join(models_dir, 'RandomForest.pkl')
+Model_location_path = os.path.join(models_dir, 'DecisionTree.pkl')
 
-# Load machine learning models
 Model_crop = pickle.load(open(Model_crop_path, 'rb'))
 Model_fertilizer = pickle.load(open(Model_fertilizer_path, 'rb'))
+Model_location = pickle.load(open(Model_location_path, 'rb'))
 
-# Define routes
-@app.route('/')
-def index():
-    return "Hello, welcome to the API!"
-
-@app.route('/predictcrop', methods=['POST'])
-def predictcrop():
-    try:
-        data = request.get_json()  # Parse JSON data from the request
-        if data is None:
-            raise ValueError("No JSON data received")
-
-        # Get form data
-        N = float(data['Nitrogen'])
-        P = float(data['Phosphorus'])
-        K = float(data['Potassium'])
-        temp = float(data['Temperature'])
-        humidity = float(data['Humidity'])
-        ph = float(data['pH'])
-        rainfall = float(data['Rainfall'])
-
-
-        if(N > 50 and N > 60):
-            crop = "Rice"
-        elif(N > 50 and N < 80):
-            crop = "Wheat"
-        elif(N > 90):
-            crop = "cofee"
-        else:
-        # Perform prediction
-            features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
-            prediction = Model_crop.predict(features)
-            crop = prediction[0]
-
-        
-
-        # Format the result message
-        result = "{} is the best crop to be cultivated there.".format(crop)
-
-        # Store the result in session
-        session['result'] = result
-        
-        # Return the prediction as JSON response
-        return jsonify({"crop_prediction": result})
-    except KeyError as e:
-        error_message = f"Error: Missing or incorrect form field - {str(e)}"
-        return jsonify({"error": error_message}), 400
-    except ValueError as e:
-        error_message = f"Error: Invalid form data - {str(e)}"
-        return jsonify({"error": error_message}), 400
-    except Exception as e:
-        error_message = f"Error: {str(e)}"
-        return jsonify({"error": error_message}), 500
-
-
-## Encode the values 
-# Define encoding functions outside the route function
+# Define encoding functions
 def encode_soil_types(original_soil_types, new_soil_type):
     soil_type_label_encoder = LabelEncoder().fit(original_soil_types)
     encoded_soil_type = soil_type_label_encoder.transform([new_soil_type])
@@ -87,65 +35,130 @@ def encode_crop_types(original_crop_types, new_crop_type):
     encoded_crop_type = crop_type_label_encoder.transform([new_crop_type])
     return encoded_crop_type[0]
 
-## Encoder Fertilizer name 
 encoded_fertilizers = {
     0: '10-26-26', 1: '14-35-14', 2: '17-17-17', 3: '20-20', 4: '28-28', 5: 'DAP', 6: 'Urea'
 }
+
 def get_fertilizer_name(encoded_value):
     return encoded_fertilizers.get(encoded_value, 'Unknown')
+
+
+def get_main_crop(state_name):
+    crops_mapping = {
+        "Andhra Pradesh": "Rice",
+        "Arunachal Pradesh": "Oranges",
+        "Assam": "Tea",
+        "Bihar": "Rice",
+        "Chhattisgarh": "Rice",
+        "Goa": "Coconut",
+        "Gujarat": "Cotton",
+        "Haryana": "Wheat",
+        "Himachal Pradesh": "Apple",
+        "Jharkhand": "Rice",
+        "Karnataka": "Sugarcane",
+        "Kerala": "Rubber",
+        "Madhya Pradesh": "Wheat",
+        "Maharashtra": "Sugarcane",
+        "Manipur": "Rice",
+        "Meghalaya": "Maize",
+        "Mizoram": "Maize",
+        "Nagaland": "Maize",
+        "Odisha": "Rice",
+        "Punjab": "Wheat",
+        "Rajasthan": "Wheat",
+        "Sikkim": "Maize",
+        "Tamil Nadu": "Rice",
+        "Telangana": "Rice",
+        "Tripura": "Rice",
+        "Uttar Pradesh": "Sugarcane",
+        "Uttarakhand": "Rice",
+        "West Bengal": "Rice"
+    }
+    
+    state_name = state_name.title()
+    
+    return crops_mapping.get(state_name, "Crop data not available for this state.")
+
+# Define root route
+@app.route('/')
+def index():
+    return "Welcome to the Bharat Agro API. Use the endpoints to get predictions."
+
+# Define API routes
+@app.route('/predictcrop', methods=['POST'])
+def predictcrop():
+    try:
+        data = request.get_json()  # Ensure that data is parsed as JSON
+        N = float(data['Nitrogen'])
+        P = float(data['Phosphorus'])
+        K = float(data['Potassium'])
+        temp = float(data['Temperature'])
+        humidity = float(data['Humidity'])
+        ph = float(data['Ph'])
+        rainfall = float(data['Rainfall'])
+
+        features = np.array([[N, P, K, temp, humidity, ph, rainfall]])
+        prediction = Model_crop.predict(features)
+        crop = prediction[0]
+
+        result = {"message": "{} is the best crop to be cultivated there.".format(crop)}
+        return jsonify(result)
+    except KeyError as e:
+        return jsonify({"error": "Missing form field - {}".format(e)}), 400
+    except ValueError as e:
+        return jsonify({"error": "Invalid form data - {}".format(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/predictfertilizer', methods=['POST'])
 def predictfertilizer():
     try:
-        # Get form data
-        Temperature = float(request.form['Temperature'])
-        Humidity = float(request.form['Humidity'])
-        Soil_Moisture = float(request.form['SoilMoisture'])
-        SoilType = request.form['soil_type']
-        Crop_type = request.form['crop_type']
-        N = float(request.form['Nitrogen'])
-        P = float(request.form['Phosphorous'])
-        K = float(request.form['Potassium'])
-        
-        # Encode Soil Type and Crop Type
-        encoded_soil_type = encode_soil_types(['Sandy', 'Loamy', 'Black', 'Red', 'Clayey'], SoilType)
-        encoded_crop_type = encode_crop_types(['Maize', 'Sugarcane', 'Cotton', 'Tobacco', 'Paddy', 'Barley',
-                                               'Wheat', 'Millets', 'Oil seeds', 'Pulses', 'Ground Nuts'], Crop_type)
+        data = request.get_json()  # Ensure that data is parsed as JSON
+        Temperature = float(data['Temperature'])
+        Humidity = float(data['Humidity'])
+        Soil_Moisture = float(data['SoilMoisture'])
+        SoilType = data['soil_type']
+        Crop_type = data['crop_type']
+        N = float(data['Nitrogen'])
+        P = float(data['Phosphorus'])
+        K = float(data['Potassium'])
 
-        # Perform prediction
+        known_soil_types = ['Sandy', 'Loamy', 'Black', 'Red', 'Clayey']
+        known_crop_types = ['Maize', 'Sugarcane', 'Cotton', 'Tobacco', 'Paddy', 'Barley', 'Wheat', 'Millets', 'Oil seeds', 'Pulses', 'Ground Nuts']
+
+        encoded_soil_type = encode_soil_types(known_soil_types, SoilType)
+        encoded_crop_type = encode_crop_types(known_crop_types, Crop_type)
+
         features = np.array([[Temperature, Humidity, Soil_Moisture, encoded_soil_type, encoded_crop_type, N, P, K]])
         prediction = Model_fertilizer.predict(features)
 
         P_fertilizer = get_fertilizer_name(prediction[0])
-
-        result = "{} is the best fertilizer to use in the field.".format(P_fertilizer)
-
-        # Store the result in session
-        session['result'] = result
-
-        return  jsonify({"fertilizer_prediction": result})
+        result = {"message": "{} is the best fertilizer to use in the field.".format(P_fertilizer)}
+        return jsonify(result)
     except KeyError as e:
-        return jsonify({"error": f"Missing form field - {e}"}), 400
+        return jsonify({"error": "Missing form field - {}".format(e)}), 400
     except ValueError as e:
-        return jsonify({"error": f"Invalid form data - {e}"})
-    
-def test_model():
-    test_features = np.array([[90, 42, 43, 20.8, 82.0, 6.5, 202.9]])
-    prediction = Model_crop.predict(test_features)
-    print(f"Test prediction: {prediction}")
+        return jsonify({"error": "Invalid form data - {}".format(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-test_model()  # Call this function to test model prediction during debugging
+@app.route('/api/cropLocation', methods=['POST'])
+def find_crop_production():
+    try:
+        data = request.get_json()  # Ensure that data is parsed as JSON
+        state_name = data['StateName']
+        district_name = data['DistrictName']
+        season = data['Season']
 
-
+        prodution = get_main_crop(state_name)
+        result = {"message": "{} is the best crop to be cultivated there.".format(prodution)}
+        return jsonify(result)
+    except KeyError as e:
+        return jsonify({"error": "Missing form field - {}".format(e)}), 400
+    except ValueError as e:
+        return jsonify({"error": "Invalid form data - {}".format(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
-
-
-
-
-
-
-
